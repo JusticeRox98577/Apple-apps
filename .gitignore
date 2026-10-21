@@ -1,0 +1,27 @@
+# macOS
+.DS_Store
+
+# Xcode
+build/
+DerivedData/
+xcuserdata/
+*.xcuserstate
+*.xcscmblueprint
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+.swiftpm/
+Pods/
+
+# Android
+.gradle/
+local.properties
+.idea/
+*.iml
+captures/
+*.apk
+*.aab
+*.keystore
+*.jks
+.kotlin/
