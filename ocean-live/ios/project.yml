@@ -19,6 +19,8 @@ targets:
       path: OceanABRP/Info.plist
       properties:
         CFBundleDisplayName: Ocean Live
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         UILaunchScreen: {}
         ITSAppUsesNonExemptEncryption: false
         UIApplicationSceneManifest:
