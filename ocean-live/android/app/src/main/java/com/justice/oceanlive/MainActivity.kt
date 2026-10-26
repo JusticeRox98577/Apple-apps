@@ -102,6 +102,16 @@ private fun requiredPermissions(): Array<String> {
 private fun f(v: Double?, digits: Int): String =
     if (v == null) "--" else String.format(Locale.US, "%.${digits}f", v)
 
+// Reply address and best scan range for the modules we know about
+private fun scanDefaults(header: String): List<String>? = when (header) {
+    "7E1" -> listOf("7E9", "2000", "21FF")
+    "7F0" -> listOf("7F8", "0000", "0FFF")
+    "752" -> listOf("75A", "0000", "0FFF")
+    "7D5" -> listOf("7DD", "0000", "0FFF")
+    "7A2" -> listOf("7AA", "F100", "FFFF")
+    else -> null
+}
+
 @Composable
 fun App() {
     val ctx = LocalContext.current
@@ -119,7 +129,7 @@ fun App() {
     var scanHeader by remember { mutableStateOf("7E1") }
     var scanRx by remember { mutableStateOf("7E9") }
     var scanFrom by remember { mutableStateOf("2000") }
-    var scanTo by remember { mutableStateOf("20FF") }
+    var scanTo by remember { mutableStateOf("21FF") }
     var confirmTest by remember { mutableStateOf(false) }
     var showSettings by remember { mutableStateOf(false) }
     var showSync by remember { mutableStateOf(false) }
@@ -497,7 +507,7 @@ fun App() {
                         OutlinedButton(onClick = { scanHeader = "7A2"; scanRx = "7AA"; scanFrom = "F100"; scanTo = "FFFF" }) { Text("Key") }
                         OutlinedButton(onClick = { scanHeader = "7D5"; scanRx = "7DD"; scanFrom = "0000"; scanTo = "0FFF" }) { Text("Heater 7D5") }
                     }
-                    OutlinedTextField(value = scanHeader, onValueChange = { scanHeader = it.uppercase() }, label = { Text("Header") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(value = scanHeader, onValueChange = { scanHeader = it.uppercase(); scanDefaults(scanHeader)?.let { d -> scanRx = d[0]; scanFrom = d[1]; scanTo = d[2] } }, label = { Text("Header") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                     OutlinedTextField(value = scanRx, onValueChange = { scanRx = it.uppercase() }, label = { Text("Reply address") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                     OutlinedTextField(value = scanFrom, onValueChange = { scanFrom = it.uppercase() }, label = { Text("First identifier") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                     OutlinedTextField(value = scanTo, onValueChange = { scanTo = it.uppercase() }, label = { Text("Last identifier") }, singleLine = true, modifier = Modifier.fillMaxWidth())

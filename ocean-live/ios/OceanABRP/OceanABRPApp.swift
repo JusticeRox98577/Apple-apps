@@ -848,7 +848,7 @@ struct ContentView: View {
     @State private var scanHeader = "7E1"
     @State private var scanRx = "7E9"
     @State private var scanFrom = "2000"
-    @State private var scanTo = "20FF"
+    @State private var scanTo = "21FF"
 
     @StateObject private var obd = OBDManager()
     @StateObject private var loc = LocationManager()
@@ -1166,6 +1166,18 @@ struct ContentView: View {
                         Button("Key module 7A2 and 7AA") { scanHeader = "7A2"; scanRx = "7AA"; scanFrom = "F100"; scanTo = "FFFF" }
                     }
                     TextField("Header", text: $scanHeader).textInputAutocapitalization(.characters).autocorrectionDisabled()
+                        .onChange(of: scanHeader) { _, v in
+                            let d: (String, String, String)?
+                            switch v.uppercased() {
+                            case "7E1": d = ("7E9", "2000", "21FF")
+                            case "7F0": d = ("7F8", "0000", "0FFF")
+                            case "752": d = ("75A", "0000", "0FFF")
+                            case "7D5": d = ("7DD", "0000", "0FFF")
+                            case "7A2": d = ("7AA", "F100", "FFFF")
+                            default: d = nil
+                            }
+                            if let d { scanRx = d.0; scanFrom = d.1; scanTo = d.2 }
+                        }
                     TextField("Reply address", text: $scanRx).textInputAutocapitalization(.characters).autocorrectionDisabled()
                     TextField("First identifier", text: $scanFrom).textInputAutocapitalization(.characters).autocorrectionDisabled()
                     TextField("Last identifier", text: $scanTo).textInputAutocapitalization(.characters).autocorrectionDisabled()
