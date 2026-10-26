@@ -31,6 +31,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
@@ -516,7 +517,16 @@ fun App() {
                     } else {
                         OutlinedButton(onClick = { Engine.startDidScan(scanHeader, scanRx, scanFrom, scanTo) }) { Text("Start scan") }
                         OutlinedButton(onClick = { Engine.startAutoProbe(scanHeader, scanRx) }) { Text("Auto probe 1000 to 4FFF") }
-                        OutlinedButton(onClick = { Engine.startAutoProbe(scanHeader, scanRx) }) { Text("Auto probe 1000 to 4FFF") }
+                    }
+                    if (ui.scanning || ui.scanTotal > 0) {
+                        val frac = if (ui.scanTotal > 0) ui.scanDone.toFloat() / ui.scanTotal else 0f
+                        LinearProgressIndicator(progress = { frac }, modifier = Modifier.fillMaxWidth())
+                        val left = ((ui.scanTotal - ui.scanDone) * 0.28).toInt()
+                        Text(
+                            "${ui.scanDone} of ${ui.scanTotal} checked, ${(frac * 100).toInt()} percent, ${ui.scanFound} found" +
+                                (if (ui.scanning) ", about ${left / 60} min ${left % 60} s left" else ""),
+                            fontSize = 13.sp, color = Color.White
+                        )
                     }
                     if (ui.scanText.isNotEmpty()) {
                         Text(ui.scanText.lines().takeLast(40).joinToString("\n"), fontFamily = FontFamily.Monospace, fontSize = 11.sp, color = Color.White)

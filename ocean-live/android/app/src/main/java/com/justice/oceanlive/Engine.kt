@@ -77,7 +77,10 @@ data class UiState(
     val hasSavedAdapter: Boolean = false,
     val testResult: String = "",
     val scanText: String = "",
-    val scanning: Boolean = false
+    val scanning: Boolean = false,
+    val scanDone: Int = 0,
+    val scanTotal: Int = 0,
+    val scanFound: Int = 0
 )
 
 /**
@@ -561,7 +564,7 @@ object Engine {
             if (holdLoop || _ui.value.scanning) return@launch
             holdLoop = true
             scanCancel = false
-            _ui.update { it.copy(scanning = true) }
+            _ui.update { it.copy(scanning = true, scanDone = 0, scanTotal = ids.size, scanFound = 0) }
             val sb = StringBuilder(label + "\n")
             try {
                 out(sb.toString())
@@ -569,8 +572,9 @@ object Engine {
                 send("ATSH" + h)
                 send("ATCRA" + r)
                 var hits = 0
-                for (v in ids) {
+                for ((idx, v) in ids.withIndex()) {
                     if (scanCancel) break
+                    _ui.update { it.copy(scanDone = idx, scanFound = hits) }
                     val did = String.format("%04X", v)
                     val cmd = "22$did"
                     val resp = send(cmd, 1500)
@@ -587,6 +591,7 @@ object Engine {
                 }
                 sb.append(if (scanCancel) "Stopped. $hits found\n" else "Done. $hits found\n")
                 out(sb.toString())
+                if (!scanCancel) _ui.update { it.copy(scanDone = ids.size, scanFound = hits) }
             } finally {
                 _ui.update { it.copy(scanning = false) }
                 holdLoop = false
