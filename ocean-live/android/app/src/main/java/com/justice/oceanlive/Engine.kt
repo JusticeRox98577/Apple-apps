@@ -538,20 +538,38 @@ object Engine {
         val hi = b.toInt(16)
         if (hi < lo) { out("The last identifier must be after the first"); return }
         if (hi - lo >= 4096) { out("Keep the range to 4096 identifiers or fewer"); return }
+        runDidScan(h, r, (lo..hi).toList(), "Scan $h to $r, $a to $b")
+    }
+
+    // Auto probe: first 64 identifiers of every block from 1000 to 4FFF, no typing.
+    fun startAutoProbe(header: String, rx: String) {
+        val h = header.trim().uppercase()
+        val r = rx.trim().uppercase()
+        val three = Regex("^[0-9A-F]{3}$")
+        if (!three.matches(h) || !three.matches(r)) {
+            _ui.update { it.copy(scanText = "Check the header and reply address") }; return
+        }
+        val ids = ArrayList<Int>()
+        for (blk in 0x10..0x4F) for (low in 0x00..0x3F) ids.add(blk * 256 + low)
+        runDidScan(h, r, ids, "Auto probe $h to $r, first 64 of each block from 1000 to 4FFF")
+    }
+
+    private fun runDidScan(h: String, r: String, ids: List<Int>, label: String) {
+        fun out(s: String) { _ui.update { it.copy(scanText = s) } }
         scope.launch {
             if (!ready || !_ui.value.active) { out("Press Start first so the adapter is connected"); return@launch }
             if (holdLoop || _ui.value.scanning) return@launch
             holdLoop = true
             scanCancel = false
             _ui.update { it.copy(scanning = true) }
-            val sb = StringBuilder("Scan $h to $r, $a to $b\n")
+            val sb = StringBuilder(label + "\n")
             try {
                 out(sb.toString())
                 delay(1500)
                 send("ATSH" + h)
                 send("ATCRA" + r)
                 var hits = 0
-                for (v in lo..hi) {
+                for (v in ids) {
                     if (scanCancel) break
                     val did = String.format("%04X", v)
                     val cmd = "22$did"

@@ -515,6 +515,8 @@ fun App() {
                         OutlinedButton(onClick = { Engine.stopDidScan() }) { Text("Stop scan") }
                     } else {
                         OutlinedButton(onClick = { Engine.startDidScan(scanHeader, scanRx, scanFrom, scanTo) }) { Text("Start scan") }
+                        OutlinedButton(onClick = { Engine.startAutoProbe(scanHeader, scanRx) }) { Text("Auto probe 1000 to 4FFF") }
+                        OutlinedButton(onClick = { Engine.startAutoProbe(scanHeader, scanRx) }) { Text("Auto probe 1000 to 4FFF") }
                     }
                     if (ui.scanText.isNotEmpty()) {
                         Text(ui.scanText.lines().takeLast(40).joinToString("\n"), fontFamily = FontFamily.Monospace, fontSize = 11.sp, color = Color.White)
