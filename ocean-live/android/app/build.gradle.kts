@@ -14,8 +14,8 @@ android {
         applicationId = "com.justice.oceanlive"
         minSdk = 26
         targetSdk = 36
-        versionCode = 11
-        versionName = "1.5.1"
+        versionCode = 12
+        versionName = "1.6"
     }
 
     val keyProps = Properties()
@@ -47,6 +47,7 @@ android {
         jvmTarget = "17"
     }
     buildFeatures {
+        buildConfig = true
         compose = true
     }
 }

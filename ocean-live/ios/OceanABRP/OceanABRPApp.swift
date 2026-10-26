@@ -472,19 +472,34 @@ final class OBDManager: NSObject, ObservableObject, CBCentralManagerDelegate, CB
             return
         }
         guard hi - lo < 4096 else { scanText = "Keep the range to 4096 identifiers or fewer"; return }
+        runScan(h, r, Array(lo...hi), "Scan \(h) to \(r), \(a) to \(b)")
+    }
+
+    // Auto probe. Reads the first 64 identifiers of every block from 1000 to 4FFF, with no typing.
+    func startAutoProbe(header: String, rx: String) {
+        let h = header.trimmingCharacters(in: .whitespaces).uppercased()
+        let r = rx.trimmingCharacters(in: .whitespaces).uppercased()
+        guard h.count == 3, r.count == 3 else { scanText = "Check the header and reply address"; return }
+        var ids: [Int] = []
+        for blk in 0x10...0x4F { for low in 0x00...0x3F { ids.append(blk * 256 + low) } }
+        runScan(h, r, ids, "Auto probe \(h) to \(r), first 64 of each block from 1000 to 4FFF")
+    }
+
+    private func runScan(_ h: String, _ r: String, _ ids: [Int], _ label: String) {
         guard ready, active else { scanText = "Press Start first so the adapter is connected"; return }
         guard !holdLoop, !scanning else { return }
         holdLoop = true
         scanning = true
         scanCancel = false
-        scanText = "Scan \(h) to \(r), \(a) to \(b)\n"
+        scanText = label + "\n"
         Task { [weak self] in
             guard let self else { return }
             try? await Task.sleep(nanoseconds: 1_500_000_000)
             _ = await self.send("ATSH" + h)
             _ = await self.send("ATCRA" + r)
             var hits = 0
-            for v in lo...hi {
+            var done = 0
+            for v in ids {
                 if self.scanCancel { break }
                 let did = String(format: "%04X", v)
                 let cmd = "22" + did
@@ -497,6 +512,8 @@ final class OBDManager: NSObject, ObservableObject, CBCentralManagerDelegate, CB
                     let flat = resp.uppercased().replacingOccurrences(of: " ", with: "")
                     if flat.contains("7F2233") { self.scanText += "\(did) locked\n"; hits += 1 }
                 }
+                done += 1
+                if done % 256 == 0 { self.status = "Scanning \(did), \(done * 100 / ids.count) percent" }
             }
             self.scanText += self.scanCancel ? "Stopped. \(hits) found\n" : "Done. \(hits) found\n"
             self.scanning = false
@@ -840,6 +857,8 @@ struct ContentView: View {
     @AppStorage("interval") private var interval = 5.0
     @AppStorage("capacityKWh") private var capacityText = "106.5"
     @AppStorage("model") private var model = "big"
+    @AppStorage("useKm") private var useKm = false
+    private let showTestTools = false
     @AppStorage("testHeader") private var testHeader = ""
     @AppStorage("testRx") private var testRx = ""
     @AppStorage("testCmd") private var testCmd = ""
@@ -938,8 +957,8 @@ struct ContentView: View {
                         StatTile(title: "Battery temp", value: fmt("batt_temp", 0), unit: "°C", icon: "thermometer.medium", tint: .orange)
                         StatTile(title: "Voltage", value: fmt("voltage", 0), unit: "V", icon: "battery.100", tint: .cyan)
                         StatTile(title: "Current", value: fmt("current", 0), unit: "A", icon: "waveform.path.ecg", tint: .mint)
-                        StatTile(title: "Efficiency", value: whPerMile.map { String(format: "%.0f", $0) } ?? "--", unit: "Wh/mi", icon: "speedometer", tint: .green)
-                        StatTile(title: "Range left", value: rangeMiles.map { String(format: "%.0f", $0) } ?? "--", unit: "mi", icon: "mappin.and.ellipse", tint: .pink)
+                        StatTile(title: "Efficiency", value: whPerMile.map { String(format: "%.0f", useKm ? $0 / 1.609344 : $0) } ?? "--", unit: useKm ? "Wh/km" : "Wh/mi", icon: "speedometer", tint: .green)
+                        StatTile(title: "Range left", value: rangeMiles.map { String(format: "%.0f", useKm ? $0 * 1.609344 : $0) } ?? "--", unit: useKm ? "km" : "mi", icon: "mappin.and.ellipse", tint: .pink)
                     }
                     abrpCard
                     controls
@@ -1149,6 +1168,9 @@ struct ContentView: View {
                         Button("Reset learning", role: .destructive) { obd.resetLearning() }
                     }
                 }
+                Section("Units") {
+                    Toggle("Use kilometers", isOn: $useKm)
+                }
                 Section("Adapter") {
                     Text(obd.status)
                     if obd.hasSavedAdapter {
@@ -1157,6 +1179,7 @@ struct ContentView: View {
                         Button("Look for adapters") { obd.connectAdapter() }
                     }
                 }
+                if showTestTools {
                 Section {
                     Menu("Pick a module") {
                         Button("Battery 7E1 and 7E9") { scanHeader = "7E1"; scanRx = "7E9"; scanFrom = "2000"; scanTo = "21FF" }
@@ -1185,6 +1208,7 @@ struct ContentView: View {
                         Button("Stop scan", role: .destructive) { obd.stopScan() }
                     } else {
                         Button("Start scan") { obd.startScan(header: scanHeader, rx: scanRx, from: scanFrom, to: scanTo) }
+                        Button("Auto probe 1000 to 4FFF") { obd.startAutoProbe(header: scanHeader, rx: scanRx) }
                     }
                     if !obd.scanText.isEmpty {
                         Text(obd.scanText.split(separator: "\n").suffix(40).joined(separator: "\n"))
@@ -1215,6 +1239,7 @@ struct ContentView: View {
                     Text("Preheat test")
                 } footer: {
                     Text("Experimental. Sends one command you type in to your own car. Only services 31 and 2F are allowed. It will not send while the car is moving or charging, and it needs the adapter connected. Use at your own risk, and only with a command you have a trusted source for.")
+                }
                 }
                 Section("Activity") {
                     ForEach(Array(obd.logLines.suffix(12).enumerated()), id: \.offset) { _, line in

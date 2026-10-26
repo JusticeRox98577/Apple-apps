@@ -122,6 +122,7 @@ fun App() {
     var token by remember { mutableStateOf(Engine.getPref("token", "")) }
     var interval by remember { mutableStateOf(Engine.getPref("interval", "5").toIntOrNull() ?: 5) }
     var model by remember { mutableStateOf(Engine.getPref("model", "big")) }
+    var useKm by remember { mutableStateOf(Engine.getPref("useKm", "0") == "1") }
     var capText by remember { mutableStateOf(Engine.getPref("capacityKWh", "106.5")) }
     var testHeader by remember { mutableStateOf(Engine.getPref("testHeader", "")) }
     var testRx by remember { mutableStateOf(Engine.getPref("testRx", "")) }
@@ -299,8 +300,8 @@ fun App() {
                     Tile("Current", f(ui.live["current"], 0), "A", Modifier.weight(1f))
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Tile("Efficiency", f(whPerMile, 0), "Wh/mi", Modifier.weight(1f))
-                    Tile("Range left", f(rangeMiles, 0), "mi", Modifier.weight(1f))
+                    Tile("Efficiency", f(if (useKm) whPerMile?.div(1.609344) else whPerMile, 0), if (useKm) "Wh/km" else "Wh/mi", Modifier.weight(1f))
+                    Tile("Range left", f(if (useKm) rangeMiles?.times(1.609344) else rangeMiles, 0), if (useKm) "km" else "mi", Modifier.weight(1f))
                 }
             }
 
@@ -490,6 +491,12 @@ fun App() {
                         OutlinedButton(onClick = { Engine.resetLearning() }) { Text("Reset learning") }
                     }
 
+                    SectionTitle("Units")
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("Use kilometers", color = Color.White, modifier = Modifier.weight(1f))
+                        Switch(checked = useKm, onCheckedChange = { useKm = it; Engine.setPref("useKm", if (it) "1" else "0") })
+                    }
+
                     SectionTitle("Adapter")
                     Text(ui.status, color = Color.White)
                     if (ui.hasSavedAdapter) {
@@ -498,6 +505,7 @@ fun App() {
                         OutlinedButton(onClick = { ensurePerms { Engine.connectAdapter() } }) { Text("Look for adapters") }
                     }
 
+                    if (BuildConfig.DEBUG) {
                     SectionTitle("Read only scan")
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         OutlinedButton(onClick = { scanHeader = "7E1"; scanRx = "7E9"; scanFrom = "2000"; scanTo = "21FF" }) { Text("Battery") }
@@ -574,6 +582,7 @@ fun App() {
                         "Experimental. Sends one command you type in to your own car. Only services 31 and 2F are allowed. It will not send while the car is moving or charging, and it needs the adapter connected. Use at your own risk, and only with a command you have a trusted source for.",
                         fontSize = 13.sp, color = Muted
                     )
+                    }
 
                     SectionTitle("Activity")
                     ui.log.takeLast(12).forEach {
