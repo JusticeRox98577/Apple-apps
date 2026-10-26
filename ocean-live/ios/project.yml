@@ -6,7 +6,7 @@ options:
 settings:
   base:
     DEVELOPMENT_TEAM: L2TJW2J666
-    MARKETING_VERSION: "1.4"
+    MARKETING_VERSION: "1.4.1"
     CURRENT_PROJECT_VERSION: "1"
     SWIFT_VERSION: "5.0"
 targets:

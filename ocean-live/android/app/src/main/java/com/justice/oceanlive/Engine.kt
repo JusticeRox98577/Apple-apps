@@ -537,7 +537,7 @@ object Engine {
         val lo = a.toInt(16)
         val hi = b.toInt(16)
         if (hi < lo) { out("The last identifier must be after the first"); return }
-        if (hi - lo >= 2048) { out("Keep the range under 2048 identifiers"); return }
+        if (hi - lo >= 4096) { out("Keep the range to 4096 identifiers or fewer"); return }
         scope.launch {
             if (!ready || !_ui.value.active) { out("Press Start first so the adapter is connected"); return@launch }
             if (holdLoop || _ui.value.scanning) return@launch

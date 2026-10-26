@@ -471,7 +471,7 @@ final class OBDManager: NSObject, ObservableObject, CBCentralManagerDelegate, CB
             scanText = "Check the entries. Header and reply are 3 hex characters and the range is 4 hex characters"
             return
         }
-        guard hi - lo < 2048 else { scanText = "Keep the range under 2048 identifiers"; return }
+        guard hi - lo < 4096 else { scanText = "Keep the range to 4096 identifiers or fewer"; return }
         guard ready, active else { scanText = "Press Start first so the adapter is connected"; return }
         guard !holdLoop, !scanning else { return }
         holdLoop = true
