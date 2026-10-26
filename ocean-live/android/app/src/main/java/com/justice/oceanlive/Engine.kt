@@ -75,7 +75,9 @@ data class UiState(
     val found: List<FoundDevice> = emptyList(),
     val log: List<String> = emptyList(),
     val hasSavedAdapter: Boolean = false,
-    val testResult: String = ""
+    val testResult: String = "",
+    val scanText: String = "",
+    val scanning: Boolean = false
 )
 
 /**
@@ -116,6 +118,7 @@ object Engine {
     private var startAction: (() -> Unit)? = null
     private var scanning = false
     @Volatile private var holdLoop = false
+    @Volatile private var scanCancel = false
 
     // Estimator state
     private var capacityKWh = 106.5
@@ -515,6 +518,62 @@ object Engine {
         val s = buffer.toString()
         buffer.setLength(0)
         return s
+    }
+
+    // Read only scan. Service 22 only, never writes.
+    fun stopDidScan() { scanCancel = true }
+
+    fun startDidScan(header: String, rx: String, from: String, to: String) {
+        val h = header.trim().uppercase()
+        val r = rx.trim().uppercase()
+        val a = from.trim().uppercase()
+        val b = to.trim().uppercase()
+        fun out(s: String) { _ui.update { it.copy(scanText = s) } }
+        val three = Regex("^[0-9A-F]{3}$")
+        val four = Regex("^[0-9A-F]{4}$")
+        if (!three.matches(h) || !three.matches(r) || !four.matches(a) || !four.matches(b)) {
+            out("Check the entries. Header and reply are 3 hex characters and the range is 4 hex characters"); return
+        }
+        val lo = a.toInt(16)
+        val hi = b.toInt(16)
+        if (hi < lo) { out("The last identifier must be after the first"); return }
+        if (hi - lo >= 2048) { out("Keep the range under 2048 identifiers"); return }
+        scope.launch {
+            if (!ready || !_ui.value.active) { out("Press Start first so the adapter is connected"); return@launch }
+            if (holdLoop || _ui.value.scanning) return@launch
+            holdLoop = true
+            scanCancel = false
+            _ui.update { it.copy(scanning = true) }
+            val sb = StringBuilder("Scan $h to $r, $a to $b\n")
+            try {
+                out(sb.toString())
+                delay(1500)
+                send("ATSH" + h)
+                send("ATCRA" + r)
+                var hits = 0
+                for (v in lo..hi) {
+                    if (scanCancel) break
+                    val did = String.format("%04X", v)
+                    val cmd = "22$did"
+                    val resp = send(cmd, 1500)
+                    val bytes = parseBytes(resp, cmd)
+                    if (bytes != null) {
+                        sb.append(did).append(" = ").append(bytes.joinToString("") { String.format("%02X", it.toInt()) }).append("\n")
+                        hits++
+                        out(sb.toString())
+                    } else if (resp.uppercase().replace(" ", "").contains("7F2233")) {
+                        sb.append(did).append(" locked\n")
+                        hits++
+                        out(sb.toString())
+                    }
+                }
+                sb.append(if (scanCancel) "Stopped. $hits found\n" else "Done. $hits found\n")
+                out(sb.toString())
+            } finally {
+                _ui.update { it.copy(scanning = false) }
+                holdLoop = false
+            }
+        }
     }
 
     // Test command for your own car, with safety checks.

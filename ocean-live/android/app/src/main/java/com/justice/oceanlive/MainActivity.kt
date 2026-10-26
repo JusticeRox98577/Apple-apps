@@ -116,6 +116,10 @@ fun App() {
     var testRx by remember { mutableStateOf(Engine.getPref("testRx", "")) }
     var testCmd by remember { mutableStateOf(Engine.getPref("testCmd", "")) }
     var testSession by remember { mutableStateOf(Engine.getPref("testSession", "0") == "1") }
+    var scanHeader by remember { mutableStateOf("7E1") }
+    var scanRx by remember { mutableStateOf("7E9") }
+    var scanFrom by remember { mutableStateOf("2000") }
+    var scanTo by remember { mutableStateOf("20FF") }
     var confirmTest by remember { mutableStateOf(false) }
     var showSettings by remember { mutableStateOf(false) }
     var showSync by remember { mutableStateOf(false) }
@@ -482,6 +486,36 @@ fun App() {
                     } else {
                         OutlinedButton(onClick = { ensurePerms { Engine.connectAdapter() } }) { Text("Look for adapters") }
                     }
+
+                    SectionTitle("Read only scan")
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedButton(onClick = { scanHeader = "7E1"; scanRx = "7E9" }) { Text("Battery") }
+                        OutlinedButton(onClick = { scanHeader = "7F0"; scanRx = "7F8" }) { Text("Climate") }
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedButton(onClick = { scanHeader = "752"; scanRx = "75A" }) { Text("Heater 752") }
+                        OutlinedButton(onClick = { scanHeader = "7D5"; scanRx = "7DD" }) { Text("Heater 7D5") }
+                    }
+                    OutlinedTextField(value = scanHeader, onValueChange = { scanHeader = it.uppercase() }, label = { Text("Header") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(value = scanRx, onValueChange = { scanRx = it.uppercase() }, label = { Text("Reply address") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(value = scanFrom, onValueChange = { scanFrom = it.uppercase() }, label = { Text("First identifier") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(value = scanTo, onValueChange = { scanTo = it.uppercase() }, label = { Text("Last identifier") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                    if (ui.scanning) {
+                        OutlinedButton(onClick = { Engine.stopDidScan() }) { Text("Stop scan") }
+                    } else {
+                        OutlinedButton(onClick = { Engine.startDidScan(scanHeader, scanRx, scanFrom, scanTo) }) { Text("Start scan") }
+                    }
+                    if (ui.scanText.isNotEmpty()) {
+                        Text(ui.scanText.lines().takeLast(40).joinToString("\n"), fontFamily = FontFamily.Monospace, fontSize = 11.sp, color = Color.White)
+                        OutlinedButton(onClick = {
+                            val cm = ctx.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                            cm.setPrimaryClip(android.content.ClipData.newPlainText("scan", ui.scanText))
+                        }) { Text("Copy results") }
+                    }
+                    Text(
+                        "Asks a module for each identifier in a range and lists the ones that answer. It only reads and never writes. Sending to ABRP pauses while it runs. Do it with the car parked and awake.",
+                        fontSize = 13.sp, color = Muted
+                    )
 
                     SectionTitle("Preheat test")
                     OutlinedTextField(

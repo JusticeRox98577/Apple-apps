@@ -141,6 +141,9 @@ final class OBDManager: NSObject, ObservableObject, CBCentralManagerDelegate, CB
     @Published var estSOC: Double? = nil
     @Published var socFromCar = false
     @Published var holdLoop = false
+    @Published var scanText = ""
+    @Published var scanning = false
+    private var scanCancel = false
     @Published var testResult = ""
     @Published var abrpStatus = "Waiting"
     @Published var lastSent: Date?
@@ -451,6 +454,53 @@ final class OBDManager: NSObject, ObservableObject, CBCentralManagerDelegate, CB
                 self.buffer = ""
                 c.resume(returning: out)
             }
+        }
+    }
+
+    // MARK: Read only scan (service 22 only, never writes)
+
+    func stopScan() { scanCancel = true }
+
+    func startScan(header: String, rx: String, from: String, to: String) {
+        let h = header.trimmingCharacters(in: .whitespaces).uppercased()
+        let r = rx.trimmingCharacters(in: .whitespaces).uppercased()
+        let a = from.trimmingCharacters(in: .whitespaces).uppercased()
+        let b = to.trimmingCharacters(in: .whitespaces).uppercased()
+        func hex(_ x: String, _ n: Int) -> Bool { x.count == n && x.range(of: "^[0-9A-F]+$", options: .regularExpression) != nil }
+        guard hex(h, 3), hex(r, 3), hex(a, 4), hex(b, 4), let lo = Int(a, radix: 16), let hi = Int(b, radix: 16), hi >= lo else {
+            scanText = "Check the entries. Header and reply are 3 hex characters and the range is 4 hex characters"
+            return
+        }
+        guard hi - lo < 2048 else { scanText = "Keep the range under 2048 identifiers"; return }
+        guard ready, active else { scanText = "Press Start first so the adapter is connected"; return }
+        guard !holdLoop, !scanning else { return }
+        holdLoop = true
+        scanning = true
+        scanCancel = false
+        scanText = "Scan \(h) to \(r), \(a) to \(b)\n"
+        Task { [weak self] in
+            guard let self else { return }
+            try? await Task.sleep(nanoseconds: 1_500_000_000)
+            _ = await self.send("ATSH" + h)
+            _ = await self.send("ATCRA" + r)
+            var hits = 0
+            for v in lo...hi {
+                if self.scanCancel { break }
+                let did = String(format: "%04X", v)
+                let cmd = "22" + did
+                let resp = await self.send(cmd, timeout: 1.5)
+                if let bytes = Self.parseBytes(resp, cmd: cmd) {
+                    let hexs = bytes.map { String(format: "%02X", Int($0)) }.joined()
+                    self.scanText += "\(did) = \(hexs)\n"
+                    hits += 1
+                } else {
+                    let flat = resp.uppercased().replacingOccurrences(of: " ", with: "")
+                    if flat.contains("7F2233") { self.scanText += "\(did) locked\n"; hits += 1 }
+                }
+            }
+            self.scanText += self.scanCancel ? "Stopped. \(hits) found\n" : "Done. \(hits) found\n"
+            self.scanning = false
+            self.holdLoop = false
         }
     }
 
@@ -795,6 +845,10 @@ struct ContentView: View {
     @AppStorage("testCmd") private var testCmd = ""
     @AppStorage("testSession") private var testSession = false
     @State private var confirmTest = false
+    @State private var scanHeader = "7E1"
+    @State private var scanRx = "7E9"
+    @State private var scanFrom = "2000"
+    @State private var scanTo = "20FF"
 
     @StateObject private var obd = OBDManager()
     @StateObject private var loc = LocationManager()
@@ -1102,6 +1156,33 @@ struct ContentView: View {
                     } else {
                         Button("Look for adapters") { obd.connectAdapter() }
                     }
+                }
+                Section {
+                    Menu("Pick a module") {
+                        Button("Battery 7E1 and 7E9") { scanHeader = "7E1"; scanRx = "7E9" }
+                        Button("Climate 7F0 and 7F8") { scanHeader = "7F0"; scanRx = "7F8" }
+                        Button("Heater 752 and 75A") { scanHeader = "752"; scanRx = "75A" }
+                        Button("Heater 7D5 and 7DD") { scanHeader = "7D5"; scanRx = "7DD" }
+                        Button("Key module 7A2 and 7AA") { scanHeader = "7A2"; scanRx = "7AA" }
+                    }
+                    TextField("Header", text: $scanHeader).textInputAutocapitalization(.characters).autocorrectionDisabled()
+                    TextField("Reply address", text: $scanRx).textInputAutocapitalization(.characters).autocorrectionDisabled()
+                    TextField("First identifier", text: $scanFrom).textInputAutocapitalization(.characters).autocorrectionDisabled()
+                    TextField("Last identifier", text: $scanTo).textInputAutocapitalization(.characters).autocorrectionDisabled()
+                    if obd.scanning {
+                        Button("Stop scan", role: .destructive) { obd.stopScan() }
+                    } else {
+                        Button("Start scan") { obd.startScan(header: scanHeader, rx: scanRx, from: scanFrom, to: scanTo) }
+                    }
+                    if !obd.scanText.isEmpty {
+                        Text(obd.scanText.split(separator: "\n").suffix(40).joined(separator: "\n"))
+                            .font(.system(.caption2, design: .monospaced))
+                        ShareLink(item: obd.scanText) { Text("Share results") }
+                    }
+                } header: {
+                    Text("Read only scan")
+                } footer: {
+                    Text("Asks a module for each identifier in a range and lists the ones that answer. It only reads and never writes. Sending to ABRP pauses while it runs. Do it with the car parked and awake.")
                 }
                 Section {
                     TextField("Header, like 7E1", text: $testHeader)
