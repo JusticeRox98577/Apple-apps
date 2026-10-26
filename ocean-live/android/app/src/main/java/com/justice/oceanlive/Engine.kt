@@ -810,7 +810,11 @@ object Engine {
                 if (tlm["is_charging"] == null) tlm["is_charging"] = 0
                 if (System.currentTimeMillis() - lastUpload >= max(1.0, interval) * 1000) {
                     if (tlm["soc"] != null) {
-                        upload(tlm, apiKey, token)
+                        if (apiKey.isNotBlank() && token.isNotBlank()) {
+                            upload(tlm, apiKey, token)
+                        } else {
+                            _ui.update { it.copy(abrpStatus = "ABRP is off. Add the API key and token in Settings to send") }
+                        }
                         _ui.value.estSoc?.let { saveD("estSOC", it) }
                         touchActive()
                     }

@@ -715,7 +715,12 @@ final class OBDManager: NSObject, ObservableObject, CBCentralManagerDelegate, CB
                 if tlm["is_charging"] == nil { tlm["is_charging"] = 0 }
                 if Date().timeIntervalSince(lastUpload) >= max(1, interval) {
                     if tlm["soc"] != nil {
-                        await self.upload(tlm, apiKey: apiKey, token: token)
+                        let hasABRP = !apiKey.trimmingCharacters(in: .whitespaces).isEmpty && !token.trimmingCharacters(in: .whitespaces).isEmpty
+                        if hasABRP {
+                            await self.upload(tlm, apiKey: apiKey, token: token)
+                        } else {
+                            self.abrpStatus = "ABRP is off. Add the API key and token in Settings to send"
+                        }
                         if let s = self.estSOC { UserDefaults.standard.set(s, forKey: "estSOC") }
                         UserDefaults.standard.set(Date(), forKey: "lastActive")
                     }
@@ -803,6 +808,13 @@ struct ContentView: View {
         (try? JSONDecoder().decode([PIDItem].self, from: Data(defaultPIDs.utf8))) ?? []
     }
 
+    private var abrpKeyMissing: Bool {
+        apiKey.trimmingCharacters(in: .whitespaces).isEmpty && !token.trimmingCharacters(in: .whitespaces).isEmpty
+    }
+    private var abrpTokenMissing: Bool {
+        token.trimmingCharacters(in: .whitespaces).isEmpty && !apiKey.trimmingCharacters(in: .whitespaces).isEmpty
+    }
+
     private var charging: Bool { (obd.live["charging"] ?? 0) > 0.5 }
 
     // Usable battery size in kWh for the chosen model
@@ -849,10 +861,7 @@ struct ContentView: View {
             loc.stop()
             return
         }
-        if apiKey.trimmingCharacters(in: .whitespaces).isEmpty || token.trimmingCharacters(in: .whitespaces).isEmpty {
-            showSettings = true
-            return
-        }
+        // ABRP is optional. With no keys the app just shows the car's charge and data.
         // The charge level is read from the car, so there is nothing to ask before starting.
         startNow()
     }
@@ -1038,14 +1047,22 @@ struct ContentView: View {
                     TextField("API key", text: $apiKey)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
+                        .listRowBackground(abrpKeyMissing ? Color.red.opacity(0.3) : Color(UIColor.secondarySystemGroupedBackground))
                     TextField("Generic token", text: $token)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
+                        .listRowBackground(abrpTokenMissing ? Color.red.opacity(0.3) : Color(UIColor.secondarySystemGroupedBackground))
                     Stepper("Send every \(Int(interval)) sec", value: $interval, in: 1...60)
                 } header: {
                     Text("ABRP")
                 } footer: {
-                    Text("Token comes from ABRP. Open your car, choose Live data, then Generic. The API key is a free Telemetry key from abetterrouteplanner.com/resources/api. This is an unofficial community app and only reads data from your car.")
+                    VStack(alignment: .leading, spacing: 6) {
+                        if abrpKeyMissing || abrpTokenMissing {
+                            Text("Both the API key and the token are needed to send to ABRP. Fill in the red field, or clear both to just watch your car.")
+                                .foregroundStyle(.red)
+                        }
+                        Text("Leave both empty if you only want to watch your charge and car data. Token comes from ABRP. Open your car, choose Live data, then Generic. The API key is a free Telemetry key from abetterrouteplanner.com/resources/api. This is an unofficial community app and only reads data from your car.")
+                    }
                 }
                 Section {
                     Picker("Model", selection: $model) {

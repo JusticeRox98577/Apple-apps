@@ -172,10 +172,7 @@ fun App() {
             Engine.halt()
             return
         }
-        if (apiKey.isBlank() || token.isBlank()) {
-            showSettings = true
-            return
-        }
+        // ABRP is optional. With no keys the app just shows the car's charge and data.
         ensurePerms {
             startNow()
         }
@@ -412,6 +409,7 @@ fun App() {
                         value = apiKey,
                         onValueChange = { apiKey = it; Engine.setPref("apiKey", it) },
                         label = { Text("API key") },
+                        isError = apiKey.isBlank() && token.isNotBlank(),
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -419,6 +417,7 @@ fun App() {
                         value = token,
                         onValueChange = { token = it; Engine.setPref("token", it) },
                         label = { Text("Generic token") },
+                        isError = token.isBlank() && apiKey.isNotBlank(),
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -434,8 +433,14 @@ fun App() {
                             Engine.setPref("interval", interval.toString())
                         }) { Text("+") }
                     }
+                    if (apiKey.isBlank() != token.isBlank()) {
+                        Text(
+                            "Both the API key and the token are needed to send to ABRP. Fill in the red field, or clear both to just watch your car.",
+                            fontSize = 13.sp, color = Color(0xFFFF6B6B)
+                        )
+                    }
                     Text(
-                        "Token comes from ABRP. Open your car, choose Live data, then Generic. The API key is a free Telemetry key from abetterrouteplanner.com/resources/api. This is an unofficial community app and only reads data from your car.",
+                        "Leave both empty if you only want to watch your charge and car data. Token comes from ABRP. Open your car, choose Live data, then Generic. The API key is a free Telemetry key from abetterrouteplanner.com/resources/api. This is an unofficial community app and only reads data from your car.",
                         fontSize = 13.sp, color = Muted
                     )
 
