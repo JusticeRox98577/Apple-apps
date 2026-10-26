@@ -489,12 +489,13 @@ fun App() {
 
                     SectionTitle("Read only scan")
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        OutlinedButton(onClick = { scanHeader = "7E1"; scanRx = "7E9" }) { Text("Battery") }
-                        OutlinedButton(onClick = { scanHeader = "7F0"; scanRx = "7F8" }) { Text("Climate") }
+                        OutlinedButton(onClick = { scanHeader = "7E1"; scanRx = "7E9"; scanFrom = "2000"; scanTo = "21FF" }) { Text("Battery") }
+                        OutlinedButton(onClick = { scanHeader = "7F0"; scanRx = "7F8"; scanFrom = "0000"; scanTo = "0FFF" }) { Text("Climate") }
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        OutlinedButton(onClick = { scanHeader = "752"; scanRx = "75A" }) { Text("Heater 752") }
-                        OutlinedButton(onClick = { scanHeader = "7D5"; scanRx = "7DD" }) { Text("Heater 7D5") }
+                        OutlinedButton(onClick = { scanHeader = "752"; scanRx = "75A"; scanFrom = "0000"; scanTo = "0FFF" }) { Text("Heater 752") }
+                        OutlinedButton(onClick = { scanHeader = "7A2"; scanRx = "7AA"; scanFrom = "F100"; scanTo = "FFFF" }) { Text("Key") }
+                        OutlinedButton(onClick = { scanHeader = "7D5"; scanRx = "7DD"; scanFrom = "0000"; scanTo = "0FFF" }) { Text("Heater 7D5") }
                     }
                     OutlinedTextField(value = scanHeader, onValueChange = { scanHeader = it.uppercase() }, label = { Text("Header") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                     OutlinedTextField(value = scanRx, onValueChange = { scanRx = it.uppercase() }, label = { Text("Reply address") }, singleLine = true, modifier = Modifier.fillMaxWidth())

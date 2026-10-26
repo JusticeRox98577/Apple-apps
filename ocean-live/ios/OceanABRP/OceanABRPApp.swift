@@ -1159,11 +1159,11 @@ struct ContentView: View {
                 }
                 Section {
                     Menu("Pick a module") {
-                        Button("Battery 7E1 and 7E9") { scanHeader = "7E1"; scanRx = "7E9" }
-                        Button("Climate 7F0 and 7F8") { scanHeader = "7F0"; scanRx = "7F8" }
-                        Button("Heater 752 and 75A") { scanHeader = "752"; scanRx = "75A" }
-                        Button("Heater 7D5 and 7DD") { scanHeader = "7D5"; scanRx = "7DD" }
-                        Button("Key module 7A2 and 7AA") { scanHeader = "7A2"; scanRx = "7AA" }
+                        Button("Battery 7E1 and 7E9") { scanHeader = "7E1"; scanRx = "7E9"; scanFrom = "2000"; scanTo = "21FF" }
+                        Button("Climate 7F0 and 7F8") { scanHeader = "7F0"; scanRx = "7F8"; scanFrom = "0000"; scanTo = "0FFF" }
+                        Button("Heater 752 and 75A") { scanHeader = "752"; scanRx = "75A"; scanFrom = "0000"; scanTo = "0FFF" }
+                        Button("Heater 7D5 and 7DD") { scanHeader = "7D5"; scanRx = "7DD"; scanFrom = "0000"; scanTo = "0FFF" }
+                        Button("Key module 7A2 and 7AA") { scanHeader = "7A2"; scanRx = "7AA"; scanFrom = "F100"; scanTo = "FFFF" }
                     }
                     TextField("Header", text: $scanHeader).textInputAutocapitalization(.characters).autocorrectionDisabled()
                     TextField("Reply address", text: $scanRx).textInputAutocapitalization(.characters).autocorrectionDisabled()
