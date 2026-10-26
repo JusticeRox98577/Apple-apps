@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -6,19 +8,35 @@ plugins {
 
 android {
     namespace = "com.justice.oceanlive"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.justice.oceanlive"
         minSdk = 26
-        targetSdk = 35
-        versionCode = 4
-        versionName = "1.3"
+        targetSdk = 36
+        versionCode = 5
+        versionName = "1.3.1"
+    }
+
+    val keyProps = Properties()
+    val keyFile = rootProject.file("keystore.properties")
+    if (keyFile.exists()) keyProps.load(keyFile.inputStream())
+
+    signingConfigs {
+        if (keyFile.exists()) {
+            create("upload") {
+                storeFile = rootProject.file(keyProps.getProperty("storeFile"))
+                storePassword = keyProps.getProperty("storePassword")
+                keyAlias = keyProps.getProperty("keyAlias")
+                keyPassword = keyProps.getProperty("keyPassword")
+            }
+        }
     }
 
     buildTypes {
         release {
             isMinifyEnabled = false
+            if (keyFile.exists()) signingConfig = signingConfigs.getByName("upload")
         }
     }
     compileOptions {
