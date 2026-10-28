@@ -6,7 +6,7 @@ options:
 settings:
   base:
     DEVELOPMENT_TEAM: L2TJW2J666
-    MARKETING_VERSION: "1.6"
+    MARKETING_VERSION: "1.7"
     CURRENT_PROJECT_VERSION: "1"
     SWIFT_VERSION: "5.0"
 targets:
@@ -15,6 +15,10 @@ targets:
     platform: iOS
     sources:
       - OceanABRP
+    entitlements:
+      path: OceanABRP/OceanABRP.entitlements
+      properties:
+        com.apple.developer.carplay-driving-task: true
     info:
       path: OceanABRP/Info.plist
       properties:
@@ -24,7 +28,11 @@ targets:
         UILaunchScreen: {}
         ITSAppUsesNonExemptEncryption: false
         UIApplicationSceneManifest:
-          UIApplicationSupportsMultipleScenes: false
+          UIApplicationSupportsMultipleScenes: true
+          UISceneConfigurations:
+            CPTemplateApplicationSceneSessionRoleApplication:
+              - UISceneConfigurationName: CarPlay
+                UISceneDelegateClassName: $(PRODUCT_MODULE_NAME).CarPlaySceneDelegate
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
         UIBackgroundModes:

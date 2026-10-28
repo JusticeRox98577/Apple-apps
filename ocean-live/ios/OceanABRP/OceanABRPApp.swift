@@ -131,6 +131,7 @@ final class LocationManager: NSObject, ObservableObject, CLLocationManagerDelega
 
 @MainActor
 final class OBDManager: NSObject, ObservableObject, CBCentralManagerDelegate, CBPeripheralDelegate {
+    static let shared = OBDManager()
     @Published var found: [CBPeripheral] = []
     @Published var status = "Not connected"
     @Published var logLines: [String] = []
@@ -869,7 +870,7 @@ struct ContentView: View {
     @State private var scanFrom = "2000"
     @State private var scanTo = "21FF"
 
-    @StateObject private var obd = OBDManager()
+    @StateObject private var obd = OBDManager.shared
     @StateObject private var loc = LocationManager()
 
     @State private var showSettings = false
