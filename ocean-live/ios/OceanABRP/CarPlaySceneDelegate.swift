@@ -26,8 +26,9 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
     private func refresh() {
         MainActor.assumeIsolated {
             let obd = OBDManager.shared
+            let live = obd.live
             func num(_ key: String, _ digits: Int, _ unit: String) -> String {
-                guard let v = obd.live[key] else { return "--" }
+                guard let v = live[key] else { return "--" }
                 return String(format: "%.\(digits)f", v) + " " + unit
             }
             let charge = obd.estSOC.map { String(format: "%.1f%%", $0) } ?? "--"
