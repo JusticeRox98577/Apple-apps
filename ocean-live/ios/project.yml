@@ -15,6 +15,10 @@ targets:
     platform: iOS
     sources:
       - OceanABRP
+    entitlements:
+      path: OceanABRP/OceanABRP.entitlements
+      properties:
+        com.apple.developer.carplay-driving-task: true
     info:
       path: OceanABRP/Info.plist
       properties:
