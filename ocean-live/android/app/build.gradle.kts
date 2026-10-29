@@ -14,8 +14,8 @@ android {
         applicationId = "com.justicemw.oceanlive"
         minSdk = 26
         targetSdk = 36
-        versionCode = 15
-        versionName = "1.7"
+        versionCode = 16
+        versionName = "1.8"
     }
 
     val keyProps = Properties()

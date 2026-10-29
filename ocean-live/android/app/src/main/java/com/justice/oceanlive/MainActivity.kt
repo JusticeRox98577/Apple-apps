@@ -194,49 +194,17 @@ fun App() {
         }
     }
 
-    Box(
-        Modifier
-            .fillMaxSize()
-            .background(Brush.verticalGradient(listOf(Color(0xFF08172E), Color(0xFF050A17))))
-            .systemBarsPadding()
-    ) {
-        Column(
-            Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp)
-        ) {
-            // Header
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text("Ocean Live", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(
-                            Modifier
-                                .size(8.dp)
-                                .clip(CircleShape)
-                                .background(
-                                    if (ui.running) Color(0xFF34C759)
-                                    else if (ui.connected) Color(0xFFFFD60A) else Color.Gray
-                                )
-                        )
-                        Spacer(Modifier.width(6.dp))
-                        Text(ui.status, fontSize = 13.sp, color = Muted)
-                    }
-                }
-                TextButton(onClick = { showSettings = true }) {
-                    Text("Settings", color = Cyan)
-                }
-            }
-
+    val cfg = androidx.compose.ui.platform.LocalConfiguration.current
+    val wide = cfg.screenWidthDp > cfg.screenHeightDp
+    val ringSize = if (wide) 170.dp else 250.dp
+    val ringBlock: @Composable () -> Unit = {
             // Charge ring
             val soc = ui.estSoc ?: 0.0
             val sweep by animateFloatAsState(targetValue = (soc / 100.0).toFloat(), label = "soc")
             val ringColor = if (soc < 15) Color(0xFFFF453A) else if (soc < 30) Color(0xFFFF9F0A) else Color(0xFF33D99A)
             Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-                Box(Modifier.size(250.dp), contentAlignment = Alignment.Center) {
-                    Canvas(Modifier.size(250.dp)) {
+                Box(Modifier.size(ringSize), contentAlignment = Alignment.Center) {
+                    Canvas(Modifier.size(ringSize)) {
                         val stroke = 20.dp.toPx()
                         val inset = stroke / 2
                         val sz = Size(size.width - stroke, size.height - stroke)
@@ -253,7 +221,7 @@ fun App() {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
                             if (ui.estSoc == null) "--" else f(soc, 0) + "%",
-                            fontSize = 64.sp, fontWeight = FontWeight.Bold, color = Color.White
+                            fontSize = if (wide) 44.sp else 64.sp, fontWeight = FontWeight.Bold, color = Color.White
                         )
                         Text(
                             if (ui.estSoc == null) "waiting for the car" else if (ui.charging) "charging" else if (ui.socFromCar) "charge from your car" else "estimated charge",
@@ -268,6 +236,8 @@ fun App() {
                 }
             }
 
+    }
+    val adapterBlock: @Composable () -> Unit = {
             // Adapter picker
             if (ui.found.isNotEmpty() && !ui.connected) {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -289,6 +259,8 @@ fun App() {
                 }
             }
 
+    }
+    val tilesBlock: @Composable () -> Unit = {
             // Stat tiles
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -305,6 +277,8 @@ fun App() {
                 }
             }
 
+    }
+    val abrpBlock: @Composable () -> Unit = {
             // ABRP card
             Row(
                 Modifier
@@ -323,6 +297,8 @@ fun App() {
                 }
             }
 
+    }
+    val startBlock: @Composable () -> Unit = {
             // Start and stop
             Button(
                 onClick = { toggle() },
@@ -336,6 +312,73 @@ fun App() {
                 )
             ) {
                 Text(if (ui.active) "Stop" else "Start", fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+            }
+    }
+
+    Box(
+        Modifier
+            .fillMaxSize()
+            .background(Brush.verticalGradient(listOf(Color(0xFF08172E), Color(0xFF050A17))))
+            .systemBarsPadding()
+    ) {
+        Column(
+            Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(if (wide) 12.dp else 20.dp)
+        ) {
+            // Header
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("Ocean Live", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            Modifier
+                                .size(8.dp)
+                                .clip(CircleShape)
+                                .background(
+                                    if (ui.running) Color(0xFF34C759)
+                                    else if (ui.connected) Color(0xFFFFD60A) else Color.Gray
+                                )
+                        )
+                        Spacer(Modifier.width(6.dp))
+                        Text(ui.status, fontSize = 13.sp, color = Muted)
+                    }
+                }
+                if (wide) {
+                    Button(
+                        onClick = { toggle() },
+                        modifier = Modifier.height(44.dp),
+                        shape = RoundedCornerShape(14.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (ui.active) Color(0xFFD9372E) else Blue,
+                            contentColor = Color.White
+                        )
+                    ) {
+                        Text(if (ui.active) "Stop" else "Start", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                    }
+                }
+                TextButton(onClick = { showSettings = true }) {
+                    Text("Settings", color = Cyan)
+                }
+            }
+
+            if (wide) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Column(Modifier.weight(0.8f), verticalArrangement = Arrangement.spacedBy(12.dp)) { ringBlock() }
+                    Column(Modifier.weight(1.2f), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        adapterBlock()
+                        tilesBlock()
+                        abrpBlock()
+                    }
+                }
+            } else {
+                ringBlock()
+                adapterBlock()
+                tilesBlock()
+                abrpBlock()
+                startBlock()
             }
             Spacer(Modifier.height(8.dp))
         }
