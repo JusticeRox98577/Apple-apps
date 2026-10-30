@@ -599,6 +599,79 @@ object Engine {
         }
     }
 
+    // Safe control finder. For each identifier it sends 2F, the identifier, then 00, which means
+    // "give control back to the car". It never switches anything on. The way the module answers
+    // shows which identifiers are real controls, and which are locked behind security access.
+    fun startControlProbe(header: String, rx: String, from: String, to: String, session: Boolean) {
+        val h = header.trim().uppercase()
+        val r = rx.trim().uppercase()
+        val a = from.trim().uppercase()
+        val b = to.trim().uppercase()
+        fun out(s: String) { _ui.update { it.copy(scanText = s) } }
+        val three = Regex("^[0-9A-F]{3}$")
+        val four = Regex("^[0-9A-F]{4}$")
+        if (!three.matches(h) || !three.matches(r) || !four.matches(a) || !four.matches(b)) {
+            out("Check the entries. Header and reply are 3 hex characters and the range is 4 hex characters"); return
+        }
+        val lo = a.toInt(16)
+        val hi = b.toInt(16)
+        if (hi < lo || hi - lo >= 4096) { out("Use a range of 4096 identifiers or fewer"); return }
+        scope.launch {
+            if (!ready || !_ui.value.active) { out("Press Start first so the adapter is connected"); return@launch }
+            val loc = lastLocation
+            if (loc == null || !loc.hasSpeed()) { out("Waiting for a GPS speed. The car must be parked"); return@launch }
+            if (loc.speed * 3.6 >= 1) { out("Blocked. The car is moving"); return@launch }
+            if (chargingNow) { out("Blocked. Wait until the car is not charging"); return@launch }
+            if (holdLoop || _ui.value.scanning) return@launch
+            holdLoop = true
+            scanCancel = false
+            val total = hi - lo + 1
+            _ui.update { it.copy(scanning = true, scanDone = 0, scanTotal = total, scanFound = 0) }
+            val sb = StringBuilder("Control finder $h to $r, $a to $b (returns control only, nothing is switched on)\n")
+            try {
+                out(sb.toString())
+                delay(1500)
+                send("ATSH" + h)
+                send("ATCRA" + r)
+                if (session) {
+                    val s = send("1003", 3000).uppercase().replace(" ", "")
+                    sb.append("1003 -> ").append(s.trim()).append("\n")
+                    out(sb.toString())
+                    if (!s.contains("5003")) {
+                        sb.append("Session was refused. Stopped\n"); out(sb.toString()); return@launch
+                    }
+                }
+                var hits = 0
+                var warnedSession = false
+                for ((idx, v) in (lo..hi).withIndex()) {
+                    if (scanCancel) break
+                    _ui.update { it.copy(scanDone = idx, scanFound = hits) }
+                    if (session && idx % 25 == 24) send("3E00", 800)
+                    val did = String.format("%04X", v)
+                    val resp = send("2F" + did + "00", 1500).uppercase().replace(" ", "").replace(">", "")
+                    when {
+                        resp.contains("6F$did") -> { sb.append(did).append(" CONTROL OK\n"); hits++ }
+                        resp.contains("7F2F33") -> { sb.append(did).append(" control, locked by security\n"); hits++ }
+                        resp.contains("7F2F22") -> { sb.append(did).append(" control, conditions not met\n"); hits++ }
+                        resp.contains("7F2F13") || resp.contains("7F2F12") -> { sb.append(did).append(" exists, wrong format\n"); hits++ }
+                        resp.contains("7F2F7F") || resp.contains("7F2F7E") -> {
+                            if (!warnedSession) { sb.append("Needs the extended session. Turn that switch on and run again\n"); warnedSession = true }
+                        }
+                        resp.contains("7F2F31") || resp.isBlank() || resp.contains("NODATA") -> {}
+                        resp.contains("7F2F") -> { sb.append(did).append(" ").append(resp.takeLast(8)).append("\n"); hits++ }
+                    }
+                    if (idx % 8 == 0 || hits > 0) out(sb.toString())
+                }
+                sb.append(if (scanCancel) "Stopped. $hits found\n" else "Done. $hits found\n")
+                out(sb.toString())
+                if (!scanCancel) _ui.update { it.copy(scanDone = total, scanFound = hits) }
+            } finally {
+                _ui.update { it.copy(scanning = false) }
+                holdLoop = false
+            }
+        }
+    }
+
     // Test command for your own car, with safety checks.
     // Only services 31 (routine control) and 2F (input output control) can be sent.
     // Writes, security access, resets, code clearing and reflashing are all blocked.

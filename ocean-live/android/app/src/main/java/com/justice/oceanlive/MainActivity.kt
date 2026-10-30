@@ -568,6 +568,7 @@ fun App() {
                     } else {
                         OutlinedButton(onClick = { Engine.startDidScan(scanHeader, scanRx, scanFrom, scanTo) }) { Text("Start scan") }
                         OutlinedButton(onClick = { Engine.startAutoProbe(scanHeader, scanRx) }) { Text("Auto probe 1000 to 4FFF") }
+                        OutlinedButton(onClick = { Engine.startControlProbe(scanHeader, scanRx, scanFrom, scanTo, testSession) }) { Text("Find controls (safe)") }
                     }
                     if (ui.scanning || ui.scanTotal > 0) {
                         val frac = if (ui.scanTotal > 0) ui.scanDone.toFloat() / ui.scanTotal else 0f
